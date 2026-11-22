@@ -1,0 +1,80 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dawchecker-security"
+version = "1.0.0"
+description = "Local-first security layer for AI agents and DAW tooling. Policy-based review of shell, file, package, MCP and plugin actions with allow/block/approve decisions and receipts. No cloud, no paywalls, no subscriptions."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [
+    { name = "ljrseals-dev", email = "ljrseals@gmail.com" },
+]
+keywords = [
+    "ai agent security",
+    "runtime security",
+    "local-first",
+    "daw",
+    "mcp security",
+    "policy engine",
+    "receipts",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = [
+    "pyyaml>=6.0",
+    "click>=8.1",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+dawchecker-sec = "dawchecker_security.cli:main"
+daw-sec = "dawchecker_security.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/ljrseals-dev/DawChecker"
+Repository = "https://github.com/ljrseals-dev/DawChecker"
+Issues = "https://github.com/ljrseals-dev/DawChecker/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dawchecker_security"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/docs",
+    "/examples",
+    "/config",
+    "/README.md",
+    "/LICENSE",
+    "/pyproject.toml",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

@@ -1,0 +1,70 @@
+# DawChecker Security — default local policy
+# Edit freely. No cloud, no remote policy fetch.
+version: 1
+default: ask
+
+rules:
+  - id: block-destructive
+    match:
+      classifications_any:
+        - destructive_delete
+        - disk_wipe
+        - disk_overwrite
+    decision: block
+    reason: Destructive filesystem operation blocked by policy
+
+  - id: block-secret-exfil
+    match:
+      classifications_any:
+        - secret_read
+        - secret_echo
+        - exfil_key
+        - secret_argument
+    decision: block
+    reason: Potential secret exposure or exfiltration blocked
+
+  - id: block-pipe-to-shell
+    match:
+      classifications_any:
+        - pipe_to_shell
+    decision: block
+    reason: Remote content piped to shell is blocked
+
+  - id: ask-privilege
+    match:
+      classifications_any:
+        - privilege_escalation
+        - setuid_or_root
+    decision: ask
+    reason: Privilege escalation requires explicit approval
+
+  - id: ask-high-risk-mcp
+    match:
+      classifications_any:
+        - code_execution_arg
+        - path_traversal_or_sensitive
+    decision: ask
+    reason: High-risk MCP arguments require approval
+
+  - id: ask-project-mutation
+    match:
+      classifications_any:
+        - project_file_mutation
+        - destructive_daw_op
+    decision: ask
+    reason: DAW project mutation requires approval
+
+  - id: ask-unpinned-or-suspect
+    match:
+      classifications_any:
+        - typosquat_suspect
+        - unpinned
+        - extra_index
+    decision: ask
+    reason: Package install risk requires review
+
+  - id: allow-low-risk
+    match:
+      risk_below: 0.25
+    decision: allow
+    reason: Low risk score — allowed by policy
