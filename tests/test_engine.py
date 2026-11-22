@@ -58,11 +58,27 @@ def test_secret_path(engine: SecurityEngine) -> None:
 
 
 def test_remembered_decision(engine: SecurityEngine) -> None:
-    ctx = ActionContext(action_type="shell", command="echo hello")
+    ctx = ActionContext(action_type="custom", command="echo hello")
     engine.remember(ctx, Decision.ALLOW, reason="test")
     result = engine.evaluate(ctx)
     assert result.decision == Decision.ALLOW
     assert "Remembered" in result.reason
+
+
+def test_remembered_allow_cannot_override_policy_block(engine: SecurityEngine) -> None:
+    ctx = ActionContext(action_type="shell", command="rm -rf /")
+    engine.remember(ctx, Decision.ALLOW, reason="stale approval")
+    result = engine.evaluate(ctx)
+    assert result.decision == Decision.BLOCK
+    assert "Remembered" not in result.reason
+
+
+def test_fingerprint_scoped_to_agent_and_cwd() -> None:
+    base = ActionContext(action_type="shell", command="echo hi", agent="agent-a", cwd="/workspace/a")
+    different_agent = ActionContext(action_type="shell", command="echo hi", agent="agent-b", cwd="/workspace/a")
+    different_cwd = ActionContext(action_type="shell", command="echo hi", agent="agent-a", cwd="/workspace/b")
+    assert base.fingerprint() != different_agent.fingerprint()
+    assert base.fingerprint() != different_cwd.fingerprint()
 
 
 def test_receipt_recorded(engine: SecurityEngine) -> None:

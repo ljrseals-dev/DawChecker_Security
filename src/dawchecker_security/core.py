@@ -58,6 +58,9 @@ class ActionContext:
             "package": self.package,
             "tool_name": self.tool_name,
             "arguments": self.arguments,
+            "agent": self.agent,
+            "session_id": self.session_id,
+            "cwd": self.cwd,
         }
         raw = json.dumps(payload, sort_keys=True, default=str)
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
@@ -114,18 +117,7 @@ class SecurityEngine:
         risk = 0.0
         reasons: list[str] = []
 
-        # 1. Remembered decision (local only)
-        remembered = self.approvals.lookup(ctx.fingerprint())
-        if remembered is not None:
-            return EvaluationResult(
-                decision=Decision(remembered["decision"]),
-                reason=f"Remembered local decision: {remembered.get('reason', 'prior approval')}",
-                risk_score=remembered.get("risk_score", 0.0),
-                classifications=remembered.get("classifications", []),
-                requires_human=False,
-            )
-
-        # 2. Classifier suite
+        # 1. Classifier suite
         if ctx.action_type == "shell" and ctx.command:
             c = self.shell.classify(ctx.command, cwd=ctx.cwd)
             classifications.extend(c.labels)
@@ -171,6 +163,23 @@ class SecurityEngine:
 
         decision = Decision(policy_result.decision)
         reason = policy_result.reason or ("; ".join(reasons) if reasons else "No elevated risk detected")
+
+        # 3. Remembered decisions are consulted only after current classifiers/policy.
+        remembered = self.approvals.lookup(ctx.fingerprint())
+        if isinstance(remembered, dict):
+            remembered_decision = remembered.get("decision")
+            if remembered_decision in (Decision.ALLOW.value, Decision.BLOCK.value):
+                if decision == Decision.BLOCK:
+                    # Current policy hard blocks always win.
+                    pass
+                elif remembered_decision == Decision.BLOCK.value:
+                    decision = Decision.BLOCK
+                    reason = f"Remembered local block: {remembered.get('reason', 'prior denial')}"
+                elif decision == Decision.ASK:
+                    decision = Decision.ALLOW
+                    reason = f"Remembered local decision: {remembered.get('reason', 'prior approval')}"
+                    policy_result.rule_id = "remembered-approval"
+
         requires_human = decision == Decision.ASK
 
         result = EvaluationResult(
