@@ -1,0 +1,184 @@
+{
+  "schema_version": "1.0",
+  "project": "DawChecker Security",
+  "repo": "ljrseals-dev/DawChecker_Security",
+  "purpose": "AI-agent action review/policy decision component. Not a sandbox.",
+  "snapshot": {
+    "branch": "security/agent-policy-recheck",
+    "pr_number": 1,
+    "pr_state": "draft",
+    "tests": "regression tests added but not executed"
+  },
+  "decision_flow": [
+    "Agent/LLM proposes action",
+    "Host constructs ActionContext; identity must be host-authenticated",
+    "Classifiers return risk labels",
+    "Current PolicyEngine evaluates",
+    "ApprovalMemory may satisfy ASK; policy BLOCK cannot be overridden",
+    "EvaluationResult returned",
+    "Trusted runtime enforces ALLOW/BLOCK/ASK before side effects",
+    "ReceiptStore optionally records"
+  ],
+  "components": [
+    {
+      "name": "core",
+      "path": "src/dawchecker_security/core.py",
+      "role": "ActionContext/fingerprint, classifier orchestration, policy decision, remembered decisions, result, optional receipt"
+    },
+    {
+      "name": "policy",
+      "path": "src/dawchecker_security/policy/engine.py",
+      "role": "Local YAML/JSON ordered rules"
+    },
+    {
+      "name": "approvals",
+      "path": "src/dawchecker_security/approvals/memory.py",
+      "role": "HMAC-tagged local approval memory",
+      "risks": [
+        "filesystem permissions",
+        "symlink safety",
+        "atomic persistence",
+        "schema validation"
+      ]
+    },
+    {
+      "name": "receipts",
+      "path": "src/dawchecker_security/receipts/store.py",
+      "role": "Local append-only JSONL",
+      "risks": [
+        "concurrent writes",
+        "malformed records",
+        "secret minimization"
+      ]
+    },
+    {
+      "name": "classifiers",
+      "path": "src/dawchecker_security/classifiers/",
+      "modules": [
+        "shell.py",
+        "file_access.py",
+        "package.py",
+        "mcp.py",
+        "daw.py",
+        "base.py"
+      ],
+      "role": "Heuristic labels and risk scores",
+      "limits": [
+        "not sandbox",
+        "shell parser incomplete",
+        "path canonicalization incomplete",
+        "nested MCP scanning incomplete"
+      ]
+    },
+    {
+      "name": "cli",
+      "path": "src/dawchecker_security/cli.py",
+      "role": "Command-line interface",
+      "risks": [
+        "input validation and edge cases"
+      ]
+    },
+    {
+      "name": "harness",
+      "path": "src/dawchecker_security/harness/wrapper.py",
+      "role": "Agent/runtime integration wrapper; caller must enforce decision"
+    },
+    {
+      "name": "policy_config",
+      "path": "config/default_policy.yaml",
+      "role": "Baseline rules"
+    },
+    {
+      "name": "tests",
+      "path": "tests/test_engine.py",
+      "role": "Unit/regression coverage; not yet run"
+    },
+    {
+      "name": "docs",
+      "paths": [
+        "docs/INTEGRATION.md",
+        "examples/basic_review.py"
+      ],
+      "role": "Integration docs and example"
+    }
+  ],
+  "trust_boundaries": {
+    "untrusted": [
+      "LLM outputs",
+      "prompt/retrieved content",
+      "agent memory",
+      "agent delegation messages",
+      "MCP/tool inputs and outputs",
+      "shell/path/package strings"
+    ],
+    "host_verified": [
+      "agent identity",
+      "session/workspace",
+      "policy integrity",
+      "approval/key storage",
+      "runtime enforcement"
+    ],
+    "rule": "Model output never authorizes itself or changes policy."
+  },
+  "llm_hosting_controls": {
+    "status": "not implemented here",
+    "required": [
+      "endpoint authN/authZ",
+      "rate limits",
+      "token quotas",
+      "spending caps",
+      "bounded concurrency",
+      "timeout/cancellation",
+      "GPU/CPU/RAM/storage budgets",
+      "tenant isolation",
+      "secret/context redaction",
+      "privacy-safe logs"
+    ]
+  },
+  "data_stores": [
+    {
+      "name": "ApprovalMemory",
+      "files": [
+        "decisions.json",
+        ".integrity_key"
+      ],
+      "status": "filesystem security/durability hardening needed"
+    },
+    {
+      "name": "ReceiptStore",
+      "file": "receipts.jsonl",
+      "status": "concurrency/corruption handling and privacy review needed"
+    }
+  ],
+  "feature_routing": {
+    "policy": "policy/engine.py + config/default_policy.yaml",
+    "approvals": "approvals/memory.py",
+    "receipts": "receipts/store.py",
+    "classifier": "classifiers/ + tests",
+    "agent/runtime": "harness/wrapper.py + docs/INTEGRATION.md",
+    "cli": "cli.py + tests",
+    "orchestration": "core.py"
+  },
+  "known_gaps": [
+    "policy schema validation",
+    "secure approval storage",
+    "recursive MCP scan",
+    "receipt concurrency/corruption",
+    "CLI input validation",
+    "path resolution/symlink checks",
+    "agent resource controls",
+    "LLM-hosting protections",
+    "runtime isolation"
+  ],
+  "governance": [
+    "branch-first",
+    "no force push",
+    "protect main",
+    "minimal changes",
+    "test regressions",
+    "honest test claims",
+    "update both architecture files together"
+  ],
+  "next_agent_instructions": "Read architecture.json and ARCHITECTURE.html before implementing. Treat as an inspection snapshot, verify current repository/branch files before edits. If a feature changes architecture, update both files in the same PR.",
+  "verification_note": "Files authored from source inspection; no test execution or live runtime inventory claimed."
+}
