@@ -162,7 +162,7 @@ class SecurityEngine:
         )
 
         decision = Decision(policy_result.decision)
-        reason = policy_result.reason or ("; ".join(reasons) if reasons else "No elevated risk detected)
+        reason = policy_result.reason or ("; ".join(reasons) if reasons else "No elevated risk detected")
 
         # 3. Remembered decisions are consulted only after current classifiers/policy.
         remembered = self.approvals.lookup(ctx.fingerprint())
